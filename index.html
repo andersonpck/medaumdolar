@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Me Dá Um Dólar</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; }
+.box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+button { margin-top: 6px; margin-right: 6px; }
+.positivo { color: green; }
+.negativo { color: red; }
+</style>
+</head>
+<body>
+
+<h1>Me Dá Um Dólar 💸</h1>
+
+<!-- SALDO CONSOLIDADO -->
+<div class="box">
+<h2>Saldo consolidado</h2>
+<p class="negativo">Você deve: R$ <span id="totalDevo">0.00</span></p>
+<p class="positivo">Devem pra você: R$ <span id="totalRecebo">0.00</span></p>
+<p><strong>Saldo final:</strong> R$ <span id="saldoFinal">0.00</span></p>
+</div>
+
+<!-- SALDO POR PESSOA -->
+<div class="box">
+<h2>Saldo por pessoa</h2>
+<ul id="saldoPessoas"></ul>
+</div>
+
+<!-- ACERTO DE CONTAS -->
+<div class="box">
+<h2>Acertar contas</h2>
+<div id="acertoContas"></div>
+</div>
+
+<!-- DEVEM PRA MIM -->
+<div class="box">
+<h2>Devem pra mim</h2>
+<input id="tipoReceber" placeholder="Tipo de gasto"><br><br>
+<input id="valorReceber" type="number" placeholder="Valor total"><br><br>
+<label><input type="checkbox" class="receber" value="erandy"> Erandy Gomes</label><br>
+<label><input type="checkbox" class="receber" value="romario"> Romário Chagas</label><br><br>
+<button onclick="calcularReceber()">Salvar</button>
+</div>
+
+<!-- DEVO PRA ALGUÉM -->
+<div class="box">
+<h2>Devo pra alguém</h2>
+<input id="tipoDever" placeholder="Tipo de gasto"><br><br>
+<input id="valorDever" type="number" placeholder="Valor"><br><br>
+<select id="quemPagou">
+<option value="erandy">Erandy Gomes</option>
+<option value="romario">Romário Chagas</option>
+</select><br><br>
+<label><input type="checkbox" id="participo"> Eu (Anderson)</label><br><br>
+<button onclick="calcularDever()">Salvar</button>
+</div>
+
+<!-- PAGAMENTO MANUAL -->
+<div class="box">
+<h2>Pagar alguém (manual / parcial)</h2>
+<select id="pagadorManual">
+<option value="anderson">Anderson Patrick</option>
+<option value="erandy">Erandy Gomes</option>
+<option value="romario">Romário Chagas</option>
+</select><br><br>
+
+<select id="recebedorManual">
+<option value="anderson">Anderson Patrick</option>
+<option value="erandy">Erandy Gomes</option>
+<option value="romario">Romário Chagas</option>
+</select><br><br>
+
+<input id="valorPagamentoManual" type="number" placeholder="Valor pago"><br><br>
+<button onclick="registrarPagamentoManual()">Registrar pagamento</button>
+</div>
+
+<!-- HISTÓRICO -->
+<div class="box">
+<h2>Histórico</h2>
+<div id="detalhes"></div>
+</div>
+
+<script>
+// ===== PESSOAS (IDS INTERNOS) =====
+const pessoas = {
+  anderson: "Anderson Patrick",
+  erandy: "Erandy Gomes",
+  romario: "Romário Chagas"
+};
+
+// ===== ESTADO =====
+let registros = JSON.parse(localStorage.getItem("registros")) || [];
+
+// ===== UTIL =====
+function salvar() {
+  localStorage.setItem("registros", JSON.stringify(registros));
+}
+function hoje() {
+  return new Date().toLocaleDateString("pt-BR");
+}
+
+// ===== DEVEM PRA MIM =====
+function calcularReceber() {
+  const tipo = tipoReceber.value;
+  const valor = Number(valorReceber.value);
+  const sel = document.querySelectorAll(".receber:checked");
+
+  if (!tipo || valor <= 0 || sel.length === 0) return;
+
+  const v = valor / (sel.length + 1);
+  sel.forEach(p => registros.push({
+    id: Date.now() + Math.random(),
+    data: hoje(),
+    tipo,
+    valor: v,
+    devedor: p.value,
+    credor: "anderson"
+  }));
+
+  limparReceber();
+  salvar();
+  atualizarTela();
+}
+
+// ===== DEVO PRA ALGUÉM =====
+function calcularDever() {
+  if (!participo.checked) return;
+
+  const tipo = tipoDever.value;
+  const valor = Number(valorDever.value);
+  const quem = quemPagou.value;
+
+  if (!tipo || valor <= 0) return;
+
+  registros.push({
+    id: Date.now() + Math.random(),
+    data: hoje(),
+    tipo,
+    valor,
+    devedor: "anderson",
+    credor: quem
+  });
+
+  limparDever();
+  salvar();
+  atualizarTela();
+}
+
+// ===== PAGAMENTO =====
+function registrarPagamento(pagadorId, recebedorId, valor) {
+  registros.push({
+    id: Date.now() + Math.random(),
+    data: hoje(),
+    tipo: "Pagamento",
+    valor,
+    devedor: recebedorId,
+    credor: pagadorId
+  });
+
+  salvar();
+  atualizarTela();
+}
+
+function registrarPagamentoManual() {
+  const pagador = pagadorManual.value;
+  const recebedor = recebedorManual.value;
+  const valor = Number(valorPagamentoManual.value);
+
+  if (pagador === recebedor || valor <= 0) return;
+
+  registrarPagamento(pagador, recebedor, valor);
+  valorPagamentoManual.value = "";
+}
+
+// ===== LIMPAR CAMPOS =====
+function limparReceber() {
+  tipoReceber.value = "";
+  valorReceber.value = "";
+  document.querySelectorAll(".receber").forEach(c => c.checked = false);
+}
+function limparDever() {
+  tipoDever.value = "";
+  valorDever.value = "";
+  participo.checked = false;
+}
+
+// ===== SALDO =====
+function calcularSaldo() {
+  const saldo = { anderson: 0, erandy: 0, romario: 0 };
+
+  registros.forEach(r => {
+    if (!saldo.hasOwnProperty(r.devedor) || !saldo.hasOwnProperty(r.credor)) return;
+    saldo[r.devedor] -= r.valor;
+    saldo[r.credor] += r.valor;
+  });
+
+  return saldo;
+}
+
+// ===== UI =====
+function atualizarTela() {
+  const saldo = calcularSaldo();
+  const meu = saldo.anderson;
+
+  totalDevo.innerText = Math.max(0, -meu).toFixed(2);
+  totalRecebo.innerText = Math.max(0, meu).toFixed(2);
+  saldoFinal.innerText = meu.toFixed(2);
+
+  saldoPessoas.innerHTML = Object.entries(saldo)
+    .map(([id,v]) =>
+      `<li class="${v >= 0 ? 'positivo' : 'negativo'}">
+        ${pessoas[id]}: R$ ${v.toFixed(2)}
+      </li>`
+    ).join("");
+
+  detalhes.innerHTML = registros.map(r => `
+    <p>${r.data} — ${r.tipo}<br>
+    ${pessoas[r.devedor]} → ${pessoas[r.credor]}: R$ ${r.valor.toFixed(2)}</p><hr>
+  `).join("") || "<p>Nenhum registro.</p>";
+
+  // Acerto com botão Quitar
+  const dev = [];
+  const cred = [];
+
+  Object.entries(saldo).forEach(([id,v]) => {
+    if (v < 0) dev.push({ id, valor: -v });
+    if (v > 0) cred.push({ id, valor: v });
+  });
+
+  let i=0,j=0,ui="";
+  while(i<dev.length && j<cred.length) {
+    const x = Math.min(dev[i].valor, cred[j].valor);
+    ui += `<p>${pessoas[dev[i].id]} paga R$ ${x.toFixed(2)} para ${pessoas[cred[j].id]}
+      <button onclick="registrarPagamento('${dev[i].id}','${cred[j].id}',${x})">Quitar</button>
+    </p>`;
+    dev[i].valor -= x;
+    cred[j].valor -= x;
+    if(dev[i].valor===0) i++;
+    if(cred[j].valor===0) j++;
+  }
+
+  acertoContas.innerHTML = ui || "<p>✅ Tudo acertado.</p>";
+}
+
+atualizarTela();
+</script>
+
+</body>
+</html>
